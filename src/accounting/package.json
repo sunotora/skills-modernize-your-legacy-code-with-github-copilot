@@ -5,6 +5,10 @@
   "description": "Node.js version of the COBOL school accounting prototype",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest --runInBand"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }

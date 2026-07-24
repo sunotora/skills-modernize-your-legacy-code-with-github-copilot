@@ -40,6 +40,64 @@ function displayMenu() {
   console.log('--------------------------------');
 }
 
+function executeAction(store, choice, amountInput = null) {
+  switch (choice.trim()) {
+    case '1':
+      return {
+        type: 'view',
+        message: `Current balance: ${formatCurrency(store.readBalance())}`,
+      };
+    case '2': {
+      const amountCents = parseAmountToCents(amountInput);
+      if (amountCents === null) {
+        return {
+          type: 'invalidAmount',
+          message: 'Invalid amount. Please enter a positive number.',
+        };
+      }
+
+      const newBalance = store.writeBalance(store.readBalance() + amountCents);
+      return {
+        type: 'credit',
+        message: `Amount credited. New balance: ${formatCurrency(newBalance)}`,
+      };
+    }
+    case '3': {
+      const amountCents = parseAmountToCents(amountInput);
+      if (amountCents === null) {
+        return {
+          type: 'invalidAmount',
+          message: 'Invalid amount. Please enter a positive number.',
+        };
+      }
+
+      const currentBalance = store.readBalance();
+      if (currentBalance >= amountCents) {
+        const newBalance = store.writeBalance(currentBalance - amountCents);
+        return {
+          type: 'debit',
+          message: `Amount debited. New balance: ${formatCurrency(newBalance)}`,
+        };
+      }
+
+      return {
+        type: 'insufficientFunds',
+        message: 'Insufficient funds for this debit.',
+      };
+    }
+    case '4':
+      return {
+        type: 'exit',
+        message: 'Exiting the program. Goodbye!',
+      };
+    default:
+      return {
+        type: 'invalidChoice',
+        message: 'Invalid choice, please select 1-4.',
+      };
+  }
+}
+
 function askQuestion(rl, question) {
   return new Promise((resolve) => {
     rl.question(question, resolve);
@@ -59,52 +117,36 @@ async function main() {
     displayMenu();
     const choice = await askQuestion(rl, 'Enter your choice (1-4): ');
 
-    switch (choice.trim()) {
-      case '1':
-        console.log(`Current balance: ${formatCurrency(store.readBalance())}`);
-        break;
-      case '2': {
-        const amountInput = await askQuestion(rl, 'Enter credit amount: ');
-        const amountCents = parseAmountToCents(amountInput);
-        if (amountCents === null) {
-          console.log('Invalid amount. Please enter a positive number.');
-          break;
-        }
+    let result;
+    if (choice.trim() === '2') {
+      const amountInput = await askQuestion(rl, 'Enter credit amount: ');
+      result = executeAction(store, choice, amountInput);
+    } else if (choice.trim() === '3') {
+      const amountInput = await askQuestion(rl, 'Enter debit amount: ');
+      result = executeAction(store, choice, amountInput);
+    } else {
+      result = executeAction(store, choice);
+    }
 
-        const newBalance = store.writeBalance(store.readBalance() + amountCents);
-        console.log(`Amount credited. New balance: ${formatCurrency(newBalance)}`);
-        break;
-      }
-      case '3': {
-        const amountInput = await askQuestion(rl, 'Enter debit amount: ');
-        const amountCents = parseAmountToCents(amountInput);
-        if (amountCents === null) {
-          console.log('Invalid amount. Please enter a positive number.');
-          break;
-        }
-
-        const currentBalance = store.readBalance();
-        if (currentBalance >= amountCents) {
-          const newBalance = store.writeBalance(currentBalance - amountCents);
-          console.log(`Amount debited. New balance: ${formatCurrency(newBalance)}`);
-        } else {
-          console.log('Insufficient funds for this debit.');
-        }
-        break;
-      }
-      case '4':
-        console.log('Exiting the program. Goodbye!');
-        continueFlag = false;
-        break;
-      default:
-        console.log('Invalid choice, please select 1-4.');
+    console.log(result.message);
+    if (result.type === 'exit') {
+      continueFlag = false;
     }
   }
 
   rl.close();
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  AccountingStore,
+  formatCurrency,
+  parseAmountToCents,
+  executeAction,
+};
